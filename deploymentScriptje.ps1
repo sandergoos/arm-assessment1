@@ -4,9 +4,9 @@ $location = 'West Europe'
 $resourceGroupName = 'sander-arm-template'
 $resourceDeploymentName = 'sander-arm-template-deployment'
 $templatePath = $env:SystemDrive + '\' + 'Projects\arm-assessment1'
-$templateFile = 'template.json'
+$templateFile = 'arm-template.json'
 $template = $templatePath + '\' + $templateFile
-$templateParameterfile = $templatePath + '\' + 'template.parameter.json'
+$templateParameterfile = $templatePath + '\' + 'arm-template.parameters.json'
 $password = "Sander@Passw0rd"
 $securePassword = $password | ConvertTo-SecureString -AsPlainText -Force
 }

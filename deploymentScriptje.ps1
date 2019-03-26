@@ -6,9 +6,7 @@ $resourceDeploymentName = 'sander-arm-template-deployment'
 $templatePath = $env:SystemDrive + '\' + 'Projects\arm-assessment1'
 $templateFile = 'arm-template.json'
 $template = $templatePath + '\' + $templateFile
-$templateParameterfile = $templatePath + '\' + 'arm-template.parameters.json'
-$password = "Sander@Passw0rd"
-$securePassword = $password | ConvertTo-SecureString -AsPlainText -Force
+$templateParameterfile = $templatePath + '\' + 'arm-template-parameters.json'
 }
 
 ### Create Resource Group
@@ -21,14 +19,12 @@ New-AzureRmResourceGroup `
 
 ### Deploy Resources
 {
-$additionalParameters = New-Object -TypeName Hashtable
-$additionalParameters['vmPrivateAdminPassword'] = $securePassword
 
 New-AzureRmResourceGroupDeployment `
     -Name $resourceDeploymentName `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $template `
-    -TemplateParameterFile $templateParameterfile
+    -TemplateParameterFile $templateParameterfile `
     -DeploymentDebugLogLevel All `
     -Verbose -Force
 }

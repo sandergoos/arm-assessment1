@@ -1,0 +1,8 @@
+Als ik het goed begrijp moet ik een virtual network maken met daarin:
+
+- een storage account
+- keyvault
+
+Daarbuiten zit een web app die een connectie moet kunnen maken met dit virtual network.
+
+Het internet kan de web app alleen bereiken via een load balancer.

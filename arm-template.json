@@ -2,13 +2,103 @@
   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-
+    "vNetName": {
+      "type": "string",
+      "defaultValue": "vNet",
+      "minLength": 1
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_ZRS",
+        "Standard_GRS",
+        "Standard_RAGRS",
+        "Premium_LRS"
+      ]
+    },
+    "storageAccountNamePrefix": {
+      "type": "string",
+      "defaultValue": "store",
+      "minLength": 1
+    }
   },
   "variables": {
-
+    "vNetPrefix": "10.0.0.0/16",
+    "vNetSubnet1Name": "Subnet-1",
+    "vNetSubnet1Prefix": "10.0.0.0/24",
+    "vNetSubnet2Name": "Subnet-2",
+    "vNetSubnet2Prefix": "10.0.1.0/24",
+    "storageAccountName": "[concat(parameters('storageAccountNamePrefix'), uniqueString(resourceGroup().id))]",
+    "vNetId": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]",
+    "vNetSubnet1Id": "[concat(variables('vNetId'),'/subnets/', variables('vNetSubnet1Name'))]",
+    "vNetSubnet2Id": "[concat(variables('vNetId'),'/subnets/', variables('vNetSubnet2Name'))]"
   },
   "resources": [
-
+    {
+      "name": "[parameters('vNetName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2018-11-01",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "[parameters('vNetName')]"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vNetPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('vNetSubnet1Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetSubnet1Prefix')]",
+              "serviceEndpoints": [
+                {
+                  "service": "Microsoft.Storage"
+                }
+              ]
+            }
+          },
+          {
+            "name": "[variables('vNetSubnet2Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetSubnet2Prefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[variables('storageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2018-07-01",
+      "sku": {
+        "name": "[parameters('storageAccountType')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks', '/', parameters('vNetName'))]"
+      ],
+      "tags": {
+        "displayName": "[variables('storageAccountName')]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "networkAcls": {
+          "virtualNetworkRules": [
+            {
+              "id": "[variables('vNetSubnet1Id')]",
+              "action": "Allow"
+            }
+          ],
+          "defaultAction": "Deny"
+        }
+      }
+    }
   ],
   "outputs": {
 

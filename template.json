@@ -2,9 +2,19 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "variables": {
-    "webSiteName": "[concat('site', uniqueString(resourceGroup().id))]"
+    "webSiteName": "[concat('site', uniqueString(resourceGroup().id))]",
+    "vNetPrefix": "10.0.0.0/16",
+    "vNetSubnet1Name": "Subnet-1",
+    "vNetSubnet1Prefix": "10.0.0.0/24",
+    "vNetSubnet2Name": "Subnet-2",
+    "vNetSubnet2Prefix": "10.0.1.0/24"
   },
   "parameters": {
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "arm-vnet",
+      "minlength": 5
+    },
     "dataLakeStoreName": {
       "type": "string",
       "defaultValue": "[uniqueString(resourceGroup().id)]",
@@ -71,6 +81,37 @@
     }
   },
   "resources": [
+    {
+      "name": "[parameters('vnetName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "vNet"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vNetPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('vNetSubnet1Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetSubnet1Prefix')]"
+            }
+          },
+          {
+            "name": "[variables('vNetSubnet2Name')]",
+            "properties": {
+              "addressPrefix": "[variables('vNetSubnet2Prefix')]"
+            }
+          }
+        ]
+      }
+    },
     {
       "apiVersion": "2016-11-01",
       "name": "[parameters('dataLakeStoreName')]",

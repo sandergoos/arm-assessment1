@@ -7,6 +7,16 @@
       "defaultValue": "vNet",
       "minLength": 1
     },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "sandergadmin"
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Admin password"
+      }
+    },
     "objectId": {
       "type": "string",
       "minLength": 1
@@ -31,18 +41,68 @@
       "type": "string",
       "defaultValue": "[concat('keyVault', uniqueString(resourceGroup().id))]",
       "minLength": 1
+    },
+    "vNetPublicIpName": {
+      "type": "string",
+      "defaultValue": "vNetPublicIp"
+    },
+    "loadBalancerName": {
+      "type": "string",
+      "defaultValue": "loadBalancer",
+      "minLength": 1
+    },
+    "networkInterfaceName": {
+      "type": "string",
+      "defaultValue": "networkInterface",
+      "minLength": 1
+    },
+    "imagePublisher": {
+      "type": "string",
+      "defaultValue": "MicrosoftWindowsServer",
+      "metadata": {
+        "description": "Image Publisher"
+      }
+    },
+    "imageOffer": {
+      "type": "string",
+      "defaultValue": "WindowsServer",
+      "metadata": {
+        "description": "Image Offer"
+      }
+    },
+    "imageSKU": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "metadata": {
+        "description": "Image SKU"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_B1s",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "vmName": {
+      "type": "string",
+      "defaultValue": "vm"
     }
   },
   "variables": {
     "vNetPrefix": "10.0.0.0/16",
     "vNetSubnet1Name": "Subnet-1",
     "vNetSubnet1Prefix": "10.0.0.0/24",
-    "vNetSubnet2Name": "Subnet-2",
-    "vNetSubnet2Prefix": "10.0.1.0/24",
     "storageAccountName": "[concat(parameters('storageAccountNamePrefix'), uniqueString(resourceGroup().id))]",
     "vNetId": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]",
     "vNetSubnet1Id": "[concat(variables('vNetId'),'/subnets/', variables('vNetSubnet1Name'))]",
-    "vNetSubnet2Id": "[concat(variables('vNetId'),'/subnets/', variables('vNetSubnet2Name'))]"
+    "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('vNetPublicIpName'))]",
+    "loadBalancerId": "[resourceId('Microsoft.Network/loadBalancers',parameters('loadBalancerName'))]",
+    "frontEndIPConfigID": "[concat(variables('loadBalancerId'),'/frontendIPConfigurations/LoadBalancerFrontEnd')]",
+    "lbPoolID": "[concat(variables('loadBalancerId'),'/backendAddressPools/BackendPool1')]",
+    "lbProbeID": "[concat(variables('loadBalancerId'),'/probes/tcpProbe')]",
+    "vmStorageAccountContainerName": "vhds",
+    "vmPrivateOSDiskName": "vmPrivateOSDisk"
   },
   "resources": [
     {
@@ -74,11 +134,122 @@
                 }
               ]
             }
-          },
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('vNetPublicIpName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2018-11-01",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "name": "[parameters('networkInterfaceName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2018-11-01",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]",
+        "[concat('Microsoft.Network/loadBalancers/', parameters('loadBalancerName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
           {
-            "name": "[variables('vNetSubnet2Name')]",
+            "name": "ipconfig1",
             "properties": {
-              "addressPrefix": "[variables('vNetSubnet2Prefix')]"
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('vNetSubnet1Id')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(variables('loadBalancerId'), '/backendAddressPools/BackendPool1')]"
+                }
+              ],
+              "loadBalancerInboundNatRules": [
+                {
+                  "id": "[concat(variables('loadBalancerId'),'/inboundNatRules/RDP-VM')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('loadBalancerName')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', parameters('vNetPublicIpName'))]"
+      ],
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "LoadBalancerFrontEnd",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[variables('publicIPAddressID')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "BackendPool1"
+          }
+        ],
+        "inboundNatRules": [
+          {
+            "name": "RDP-VM",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontEndIPConfigID')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 50001,
+              "backendPort": 3389,
+              "enableFloatingIP": false
+            }
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "name": "LBRule",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontEndIPConfigID')]"
+              },
+              "backendAddressPool": {
+                "id": "[variables('lbPoolID')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 80,
+              "backendPort": 80,
+              "enableFloatingIP": false,
+              "idleTimeoutInMinutes": 5,
+              "probe": {
+                "id": "[variables('lbProbeID')]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "tcpProbe",
+            "properties": {
+              "protocol": "Tcp",
+              "port": 80,
+              "intervalInSeconds": 5,
+              "numberOfProbes": 2
             }
           }
         ]
@@ -109,6 +280,49 @@
           ],
           "defaultAction": "Deny"
         }
+      }
+    },
+    {
+      "name": "[parameters('vmName')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2018-10-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('networkInterfaceName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vmName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('imageSKU')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "vmPrivateOSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2018-07-01').primaryEndpoints.blob, variables('vmStorageAccountContainerName'), '/', variables('vmPrivateOSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',parameters('networkInterfaceName'))]"
+            }
+          ]
+        }       
       }
     },
     {

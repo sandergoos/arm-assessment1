@@ -8,6 +8,11 @@ $templateFile = 'arm-template.json'
 $template = $templatePath + '\' + $templateFile
 $templateParameterfile = $templatePath + '\' + 'arm-template.parameters.json'
 $objectId = "9053ded9-aa08-44da-b328-ce98597de522"
+$password = ConvertTo-SecureString "P@ssW0rD!" -AsPlainText -Force
+
+### Define additional template parameters
+$additionalParameters = New-Object -TypeName Hashtable
+$additionalParameters['adminPassword'] = $password
 }
 
 ### Create Resource Group
@@ -25,8 +30,8 @@ New-AzureRmResourceGroupDeployment `
     -Name $resourceDeploymentName `
     -ResourceGroupName $resourceGroupName `
     -TemplateFile $template `
-    -TemplateParameterFile $templateParameterfile `
     -DeploymentDebugLogLevel All `
     -objectId $objectId `
+     @additionalParameters `
     -Verbose -Force
 }

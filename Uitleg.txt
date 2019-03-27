@@ -13,6 +13,11 @@ Snap niet hoe ik een storage account en of een keyvault binnen een virtual netwo
 
 Stap 2. Voeg een storage account en probeer deze toe te kennen aan een subnet binnen het virtual network. Storage account kan alleen via virtual network bereikt worden.
 
-Stap 3. Key vault toevoegen met dezelfde virtual network rules. Weet niet zeker of dit ervoor zorgt dat de web app straks hier nog connectie mee kan maken
+Stap 3. Key vault toevoegen met dezelfde virtual network rules. Weet niet zeker of dit ervoor zorgt dat de web app straks hier nog connectie mee kan maken.
+Blijkbaar moet mijn subnet ook een vault endpoint hebben
+
+Stap 4. Voeg een VM toe met de disk opgeslagen in het storageaccount. Maak een network interface op het subnet en koppel deze aan een loadbalancer.
+De loadbalancer heeft rules om RDP door te laten en web (poort 80).
+
 
 
